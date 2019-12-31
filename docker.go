@@ -116,6 +116,13 @@ func (p Plugin) Exec() error {
 	for _, tag := range p.Build.Tags {
 		cmds = append(cmds, commandTag(p.Build, tag)) // docker tag
 
+        cmd := checkTag(p.Build, tag)
+        err := cmd.Run()
+        if err == nil {
+            fmt.Printf("Could not push, image already exist %s. Ignoring...\n", cmd.Args[3])
+            continue
+        }
+
 		if p.Dryrun == false {
 			cmds = append(cmds, commandPush(p.Build, tag)) // docker push
 		}
@@ -159,6 +166,10 @@ func commandLogin(login Login) *exec.Cmd {
 // helper to check if args match "docker pull <image>"
 func isCommandPull(args []string) bool {
 	return len(args) > 2 && args[1] == "pull"
+}
+
+func isCommandCheckTag(args []string) bool {
+    return len(args) > 2 && args[1] == "manifest"
 }
 
 func commandPull(repo string) *exec.Cmd {
@@ -305,6 +316,11 @@ func commandTag(build Build, tag string) *exec.Cmd {
 func commandPush(build Build, tag string) *exec.Cmd {
 	target := fmt.Sprintf("%s:%s", build.Repo, tag)
 	return exec.Command(dockerExe, "push", target)
+}
+
+func checkTag(build Build, tag string) *exec.Cmd {
+    target := fmt.Sprintf("%s:%s", build.Repo, tag)
+    return exec.Command(dockerExe, "manifest", "inspect", target)
 }
 
 // helper function to create the docker daemon command.
